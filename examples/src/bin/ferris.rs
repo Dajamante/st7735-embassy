@@ -38,7 +38,7 @@ async fn main(_spawner: Spawner, p: Peripherals) {
     display.clear(Rgb565::BLACK).unwrap();
 
     let raw_image: Bmp<Rgb565> =
-        Bmp::from_slice(include_bytes!("../../assets/output.bmp")).unwrap();
+        Bmp::from_slice(include_bytes!("../../assets/ferris3.bmp")).unwrap();
     let image = Image::new(&raw_image, Point::new(34, 24));
 
     //let image_raw: ImageRawLE<Rgb565> = ImageRaw::new(include_bytes!("../../assets/ado1.raw"), 86);
