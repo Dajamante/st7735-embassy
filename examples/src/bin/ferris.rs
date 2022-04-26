@@ -3,8 +3,6 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
-use nrf_embassy as _; // global logger + panicking-behavior + memory layout
-
 use embassy::executor::Spawner;
 use embassy::time::{Delay, Duration, Timer};
 use embassy_nrf::gpio::{Level, Output, OutputDrive};
@@ -14,8 +12,10 @@ use embedded_graphics::{
     pixelcolor::Rgb565,
     prelude::*,
 };
-use st7735_embassy::{self, ST7735};
 use embedded_hal_async::spi::ExclusiveDevice;
+use nrf_embassy as _; // global logger + panicking-behavior + memory layout
+use st7735_embassy::{self, ST7735};
+use tinybmp::Bmp;
 
 #[embassy::main]
 async fn main(_spawner: Spawner, p: Peripherals) {
@@ -37,9 +37,12 @@ async fn main(_spawner: Spawner, p: Peripherals) {
     display.init(&mut Delay).await.unwrap();
     display.clear(Rgb565::BLACK).unwrap();
 
-    let image_raw: ImageRawLE<Rgb565> =
-        ImageRaw::new(include_bytes!("../../assets/ferris.raw"), 86);
-    let image: Image<_> = Image::new(&image_raw, Point::new(34, 24));
+    let raw_image: Bmp<Rgb565> =
+        Bmp::from_slice(include_bytes!("../../assets/output.bmp")).unwrap();
+    let image = Image::new(&raw_image, Point::new(34, 24));
+
+    //let image_raw: ImageRawLE<Rgb565> = ImageRaw::new(include_bytes!("../../assets/ado1.raw"), 86);
+    //let image: Image<_> = Image::new(&image_raw, Point::new(34, 24));
     image.draw(&mut display).unwrap();
     display.flush().await.unwrap();
 
@@ -47,8 +50,8 @@ async fn main(_spawner: Spawner, p: Peripherals) {
     let mut backlight = Output::new(p.P0_03, Level::High, OutputDrive::Standard);
     loop {
         backlight.set_high();
-        Timer::after(Duration::from_millis(700)).await;
-        //backlight.set_low();
-        //Timer::after(Duration::from_millis(300)).await;
+        Timer::after(Duration::from_millis(1700)).await;
+        backlight.set_low();
+        Timer::after(Duration::from_millis(300)).await;
     }
 }
