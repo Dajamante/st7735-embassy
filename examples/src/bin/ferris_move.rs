@@ -22,7 +22,7 @@ use tinybmp::Bmp;
 static CHANNEL: Channel<ThreadModeRawMutex, ButtonEvent, 1> = Channel::new();
 
 #[embassy::task(pool_size = 4)]
-async fn button_task(
+async fn button_listener(
     sender: Sender<'static, ThreadModeRawMutex, ButtonEvent, 1>,
     id: Button,
     mut pin: Input<'static, AnyPin>,
@@ -50,16 +50,16 @@ async fn main(spawner: Spawner, p: Peripherals) {
     let btn4 = Input::new(p.P0_25.degrade(), Pull::Up);
 
     spawner
-        .spawn(button_task(sender.clone(), Button::Left, btn1))
+        .spawn(button_listener(sender.clone(), Button::Left, btn1))
         .unwrap();
     spawner
-        .spawn(button_task(sender.clone(), Button::Right, btn2))
+        .spawn(button_listener(sender.clone(), Button::Right, btn2))
         .unwrap();
     spawner
-        .spawn(button_task(sender.clone(), Button::Up, btn3))
+        .spawn(button_listener(sender.clone(), Button::Up, btn3))
         .unwrap();
     spawner
-        .spawn(button_task(sender.clone(), Button::Down, btn4))
+        .spawn(button_listener(sender.clone(), Button::Down, btn4))
         .unwrap();
 
     // SPI configuration
@@ -102,34 +102,17 @@ async fn main(spawner: Spawner, p: Peripherals) {
         if let event = receiver.recv().await {
             match event {
                 ButtonEvent::Pressed(id) => {
-                    display.clear(Rgb565::BLACK).unwrap();
-
+                    info!("Btn {:#?} pressed", id);
                     match id {
-                        Button::Right => {
-                            info!("Button 1 pressed");
-                            //Timer::after(Duration::from_millis(100)).await;
-                            start_point.x += 10;
-                            
-                        },
-                        Button::Left => {
-                            info!("Button 2 pressed");
-                            //Timer::after(Duration::from_millis(100)).await;
-                            start_point.x -= 10;
-                           
-                        },
+                        Button::Right => start_point.x += 10,
+                        Button::Left => start_point.x -= 10,
                         Button::Up => {
-                            info!("Button 3 pressed");
                             is_turned = true;
-                            //Timer::after(Duration::from_millis(100)).await;
                             start_point.y -= 10;
-
                         },
                         Button::Down => {
-                            info!("Button 4 pressed");
                             is_turned = false;
-                            //Timer::after(Duration::from_millis(100)).await;
                             start_point.y += 10;
-                           
                         }
                     }
                     if is_turned {
@@ -137,7 +120,7 @@ async fn main(spawner: Spawner, p: Peripherals) {
                     } else {
                         image = Image::new(&raw_image_front, start_point);
                     }
-                    
+                    display.clear(Rgb565::BLACK).unwrap();
                     image.draw(&mut display).unwrap();
                     display.flush().await.unwrap();
 
