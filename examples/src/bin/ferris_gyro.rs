@@ -16,7 +16,7 @@ use embassy_nrf::gpiote::{InputChannel, InputChannelPolarity};
 use embassy_nrf::twim::{self, Twim};
 use embassy_nrf::{interrupt, peripherals::TWISPI0, spim, Peripherals};
 
-use embedded_graphics::{image::Image, pixelcolor::Rgb565, prelude::*};
+use embedded_graphics::{image::Image, pixelcolor::Rgb565, prelude::*, primitives::{Circle,  PrimitiveStyle}};
 use embedded_hal_async::spi::ExclusiveDevice;
 use st7735_embassy::{self, ST7735};
 use tinybmp::Bmp;
@@ -61,6 +61,9 @@ async fn main(spawner: Spawner, p: Peripherals) {
 
     let raw_image_back: Bmp<Rgb565> =
         Bmp::from_slice(include_bytes!("../../assets/ferris_back12.bmp")).unwrap();
+    
+    let raw_image_blink: Bmp<Rgb565> =
+        Bmp::from_slice(include_bytes!("../../assets/ferris_blink.bmp")).unwrap();
 
     image.draw(&mut display).unwrap();
     display.flush().await.unwrap();
@@ -71,37 +74,34 @@ async fn main(spawner: Spawner, p: Peripherals) {
     backlight.set_high();
     let mut old_roll = 0.0;
     let mut old_pitch = 0.0;
+    let mut count_to_blink = 0;
     loop {
+        count_to_blink += 1;
         // Get gyro data, scaled with sensitivity
         let gyro = mpu.get_gyro().await.unwrap();
         //info!("gyro: {:?}", gyro);
         let acc = mpu.get_acc_angles().await.unwrap();
         info!("r/p: {:?}", acc);
-        let roll = (acc.0 * 1.5) as i32;
-        let pitch = (acc.1 * 1.5) as i32;
-        start_point.x -= roll;
-        start_point.y += pitch;
+        let roll = (acc.0 * 2.0) as i32;
+        let pitch = (acc.1 * 2.0) as i32;
+        start_point.x = (start_point.x - roll) % 160;
+        start_point.y = (start_point.y + pitch) % 128;
 
-        if acc.0 > old_roll {
-            old_roll += 0.05;
-        } else if acc.0 < old_roll {
-            old_roll -= 0.05;
-        }
-
-        if acc.1 > old_pitch {
-            old_pitch += 0.05
-        } else if acc.1 < old_pitch {
-            old_pitch -= 0.05;
-        }
-
-        //info!("old z: {}", old_z);
-        ///info!("gyro 2: {}", gyro.2);
-        //Timer::after(Duration::from_millis(100)).await;
-        if old_roll < -0.3 && old_pitch < -0.3 {
-            image = Image::new(&raw_image_back, start_point);
-        } else {
+        if acc.1 >= 0.0 {
             image = Image::new(&raw_image_front, start_point);
-        }
+            if count_to_blink >= 50 {
+                Circle::new(Point::new(10, 20), 30)
+                    .translate(Point::new(start_point.x, start_point.y))
+                    .into_styled(PrimitiveStyle::with_fill(Rgb565::BLUE))
+                    .draw(&mut display).unwrap();
+                image.draw(&mut display).unwrap();
+                display.flush().await.unwrap();
+                
+            }
+            
+        } else  {
+            image = Image::new(&raw_image_back, start_point);
+        }  
         display.clear(Rgb565::BLACK).unwrap();
         image.draw(&mut display).unwrap();
         display.flush().await.unwrap();
