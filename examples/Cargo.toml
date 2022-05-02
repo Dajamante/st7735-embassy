@@ -19,6 +19,7 @@ st7735-embassy = { path = "../"}
 embedded-graphics = "0.7.1"
 embedded-hal-async = { version = "0.1.0-alpha.0" }
 tinybmp = "0.3.1" 
+mpu6050-async={ git = "https://github.com/kalkyl/mpu6050-async.git" }
 
 [features]
 # set logging levels here
